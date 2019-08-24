@@ -1,19 +1,18 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using System.IO;
 using System.Diagnostics;
-using System.Linq;
 
 namespace E7.Protobuf
 {
     internal class ProtobufUnityCompiler : AssetPostprocessor
     {
+        private static bool _hasAnyChanges;
+        
         /// <summary>
         /// Path to the file of all protobuf files in your Unity folder.
         /// </summary>
-        static string[] AllProtoFiles
+        private static string[] AllProtoFiles
         {
             get
             {
@@ -26,7 +25,7 @@ namespace E7.Protobuf
         /// A parent folder of all protobuf files found in your Unity project collected together.
         /// This means all .proto files in Unity could import each other freely even if they are far apart.
         /// </summary>
-        static string[] IncludePaths
+        private static string[] IncludePaths
         {
             get
             {
@@ -42,11 +41,32 @@ namespace E7.Protobuf
             }
         }
 
-        static bool anyChanges = false;
-        static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
+        /// <summary>
+        /// Called from Force Compilation button in the prefs.
+        /// </summary>
+        internal static void CompileAllInProject()
         {
-            anyChanges = false;
-            if (ProtoPrefs.enabled == false)
+            if (ProtoPrefs.isLoggingStandardEnabled)
+            {
+                UnityEngine.Debug.Log("Protobuf Unity : Compiling all .proto files in the project...");
+            }
+
+            foreach (string s in AllProtoFiles)
+            {
+                if (ProtoPrefs.isLoggingStandardEnabled)
+                {
+                    UnityEngine.Debug.Log("Protobuf Unity : Compiling " + s);
+                }
+                CompileProtobufSystemPath(s, IncludePaths);
+            }
+            UnityEngine.Debug.Log(nameof(ProtobufUnityCompiler));
+            AssetDatabase.Refresh();
+        }
+        
+        private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
+        {
+            _hasAnyChanges = false;
+            if (ProtoPrefs.isAutoCompilationEnabled == false)
             {
                 return;
             }
@@ -55,44 +75,15 @@ namespace E7.Protobuf
             {
                 if (CompileProtobufAssetPath(str, IncludePaths) == true)
                 {
-                    anyChanges = true;
+                    _hasAnyChanges = true;
                 }
             }
 
-            /*
-            for (int i = 0; i < movedAssets.Length; i++)
-            {
-                CompileProtobufAssetPath(movedAssets[i]);
-            }
-            */
-
-            if (anyChanges)
+            if (_hasAnyChanges)
             {
                 UnityEngine.Debug.Log(nameof(ProtobufUnityCompiler));
                 AssetDatabase.Refresh();
             }
-        }
-
-        /// <summary>
-        /// Called from Force Compilation button in the prefs.
-        /// </summary>
-        internal static void CompileAllInProject()
-        {
-            if (ProtoPrefs.logStandard)
-            {
-                UnityEngine.Debug.Log("Protobuf Unity : Compiling all .proto files in the project...");
-            }
-
-            foreach (string s in AllProtoFiles)
-            {
-                if (ProtoPrefs.logStandard)
-                {
-                    UnityEngine.Debug.Log("Protobuf Unity : Compiling " + s);
-                }
-                CompileProtobufSystemPath(s, IncludePaths);
-            }
-            UnityEngine.Debug.Log(nameof(ProtobufUnityCompiler));
-            AssetDatabase.Refresh();
         }
 
         private static bool CompileProtobufAssetPath(string assetPath, string[] includePaths)
@@ -108,51 +99,76 @@ namespace E7.Protobuf
 
             if (Path.GetExtension(protoFileSystemPath) == ".proto")
             {
-                string outputPath = Path.GetDirectoryName(protoFileSystemPath);
-
-                string options = " --csharp_out \"{0}\" ";
-                foreach (string s in includePaths)
-                {
-                    options += string.Format(" --proto_path \"{0}\" ", s);
-                }
-
-                //string combinedPath = string.Join(" ", optionFiles.Concat(new string[] { protoFileSystemPath }));
-
-                string finalArguments = string.Format("\"{0}\"", protoFileSystemPath) + string.Format(options, outputPath);
-
-                if (ProtoPrefs.logStandard)
-                {
-                    UnityEngine.Debug.Log("Protobuf Unity : Final arguments :\n" + finalArguments);
-                }
-
-                ProcessStartInfo startInfo = new ProcessStartInfo() { FileName = ProtoPrefs.excPath, Arguments = finalArguments };
-
-                Process proc = new Process() { StartInfo = startInfo };
-                proc.StartInfo.UseShellExecute = false;
-                proc.StartInfo.RedirectStandardOutput = true;
-                proc.StartInfo.RedirectStandardError = true;
-                proc.Start();
-
-                string output = proc.StandardOutput.ReadToEnd();
-                string error = proc.StandardError.ReadToEnd();
-                proc.WaitForExit();
-
-                if (ProtoPrefs.logStandard)
-                {
-                    if (output != "")
-                    {
-                        UnityEngine.Debug.Log("Protobuf Unity : " + output);
-                    }
-                    UnityEngine.Debug.Log("Protobuf Unity : Compiled " + Path.GetFileName(protoFileSystemPath));
-                }
-
-                if (ProtoPrefs.logError && error != "")
-                {
-                    UnityEngine.Debug.LogError("Protobuf Unity : " + error);
-                }
+                string arguments = CreateArgumentsString(protoFileSystemPath, includePaths);
+                CreateCompilationProcess(arguments, protoFileSystemPath);       
                 return true;
             }
             return false;
+        }
+
+        private static void CreateCompilationProcess(string arguments, string protoFileSystemPath)
+        {
+            ProcessStartInfo startInfo = new ProcessStartInfo() { FileName = ProtoPrefs.excPath, Arguments = arguments };
+            Process proc = new Process() { StartInfo = startInfo };
+            proc.StartInfo.UseShellExecute = false;
+            proc.StartInfo.RedirectStandardOutput = true;
+            proc.StartInfo.RedirectStandardError = true;
+            proc.Start();
+
+            string output = proc.StandardOutput.ReadToEnd();
+            string error = proc.StandardError.ReadToEnd();
+            proc.WaitForExit();
+
+            if (ProtoPrefs.isLoggingStandardEnabled)
+            {
+                if (output != "")
+                {
+                    UnityEngine.Debug.Log("Protobuf Unity : " + output);
+                }
+                UnityEngine.Debug.Log("Protobuf Unity : Compiled " + Path.GetFileName(protoFileSystemPath));
+            }
+
+            if (ProtoPrefs.isLoggingErrorEnabled && error != "")
+            {
+                UnityEngine.Debug.LogError("Protobuf Unity : " + error);
+            }
+        }
+
+        private static string CreateArgumentsString(string protoFileSystemPath,  string[] includePaths)
+        {
+            string options = "";
+            
+            options += CreateProtoOptions(includePaths);
+            options += CreateGrpcOptions();  
+              
+            string outputPath = Path.GetDirectoryName(protoFileSystemPath);
+            string arguments =  $"\"{protoFileSystemPath}\"" + string.Format(options, outputPath);
+            if (ProtoPrefs.isLoggingStandardEnabled)
+            {
+                UnityEngine.Debug.Log("Protobuf Unity : Final arguments :\n" + arguments);
+            }
+
+            return arguments;
+        }
+        
+        private static string CreateProtoOptions(string[] includePaths)
+        {
+            string options = " --csharp_out \"{0}\" ";
+            foreach (string s in includePaths)
+            {
+                options += $" --proto_path \"{s}\" ";
+            }
+
+            return options;
+        }
+
+        private static string CreateGrpcOptions()
+        {
+            if (!ProtoPrefs.isGrpcCompilationEnabled) return string.Empty;
+
+            string options = " --grpc_out \"{0}\" ";
+            options += $" --plugin=protoc-gen-grpc={ProtoPrefs.excGrpcPath}";
+            return options;
         }
     }
 }

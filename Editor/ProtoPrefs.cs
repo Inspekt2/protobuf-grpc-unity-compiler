@@ -6,72 +6,71 @@ namespace E7.Protobuf
 {
     internal static class ProtoPrefs
     {
-        internal static readonly string prefProtocEnable = "ProtobufUnity_Enable";
-        internal static readonly string prefProtocExecutable = "ProtobufUnity_ProtocExecutable";
-        internal static readonly string prefLogError = "ProtobufUnity_LogError";
-        internal static readonly string prefLogStandard = "ProtobufUnity_LogStandard";
-        internal static bool enabled
+        private static readonly string PrefProtocEnable = "ProtobufUnity_Enable";
+        private static readonly string PrefGrpcCompilationEnabled = "ProtobufUnity_GrpcCompilationEnabled";
+        private static readonly string PrefProtocExecutable = "ProtobufUnity_ProtocExecutable";
+        private static readonly string PrefProtocGrpcExecutable = "ProtobufUnity_ProtocGrpcExecutable";
+        private static readonly string PrefLogError = "ProtobufUnity_LogError";
+        private static readonly string PrefLogStandard = "ProtobufUnity_LogStandard";
+        
+        internal static bool isAutoCompilationEnabled
         {
-            get
-            {
-                return EditorPrefs.GetBool(prefProtocEnable, true);
-            }
-            set
-            {
-                EditorPrefs.SetBool(prefProtocEnable, value);
-            }
+            get => EditorPrefs.GetBool(PrefProtocEnable, true);
+            set => EditorPrefs.SetBool(PrefProtocEnable, value);
         }
-        internal static bool logError
+        
+        internal static bool isGrpcCompilationEnabled
         {
-            get
-            {
-                return EditorPrefs.GetBool(prefLogError, true);
-            }
-            set
-            {
-                EditorPrefs.SetBool(prefLogError, value);
-            }
+            get => EditorPrefs.GetBool(PrefGrpcCompilationEnabled, true);
+            set => EditorPrefs.SetBool(PrefGrpcCompilationEnabled, value);
+        }
+        
+        internal static bool isLoggingErrorEnabled
+        {
+            get => EditorPrefs.GetBool(PrefLogError, true);
+            set => EditorPrefs.SetBool(PrefLogError, value);
         }
 
-        internal static bool logStandard
+        internal static bool isLoggingStandardEnabled
         {
-            get
-            {
-                return EditorPrefs.GetBool(prefLogStandard, false);
-            }
-            set
-            {
-                EditorPrefs.SetBool(prefLogStandard, value);
-            }
+            get => EditorPrefs.GetBool(PrefLogStandard, false);
+            set => EditorPrefs.SetBool(PrefLogStandard, value);
         }
 
         internal static string rawExcPath
         {
-            get
-            {
-                return EditorPrefs.GetString(prefProtocExecutable, "");
-            }
-            set
-            {
-                EditorPrefs.SetString(prefProtocExecutable, value);
-            }
+            get => EditorPrefs.GetString(PrefProtocExecutable, "");
+            set => EditorPrefs.SetString(PrefProtocExecutable, value);
         }
-
+        
         internal static string excPath
         {
             get
             {
-                string ret = EditorPrefs.GetString(prefProtocExecutable, "");
-                if (ret.StartsWith(".."))
-                    return Path.Combine(Application.dataPath, ret);
-                else
-                    return ret;
+                string ret = EditorPrefs.GetString(PrefProtocExecutable, "");
+                return ret.StartsWith("..") ? Path.Combine(Application.dataPath, ret) : ret;
             }
-            set
-            {
-                EditorPrefs.SetString(prefProtocExecutable, value);
-            }
+            
+            set => EditorPrefs.SetString(PrefProtocExecutable, value);
         }
+        
+        internal static string rawExcGrpcPath
+        {
+            get => EditorPrefs.GetString(PrefProtocGrpcExecutable, "");
+            set => EditorPrefs.SetString(PrefProtocGrpcExecutable, value);
+        }
+        
+        internal static string excGrpcPath
+        {
+            get
+            {
+                string ret = EditorPrefs.GetString(PrefProtocGrpcExecutable, "");
+                return ret.StartsWith("..") ? Path.Combine(Application.dataPath, ret) : ret;
+            }
+            set => EditorPrefs.SetString(PrefProtocGrpcExecutable, value);
+        }
+
+       
 
 #if UNITY_2018_3_OR_NEWER
         internal class ProtobufUnitySettingsProvider : SettingsProvider
@@ -82,47 +81,52 @@ namespace E7.Protobuf
 
             public override void OnGUI(string searchContext)
             {
-                ProtobufPreference();
+                ShowProtobufPreferencesWindow();
             }
 
             [SettingsProvider]
-            static SettingsProvider ProtobufPreferenceSettingsProvider()
+            static SettingsProvider CreateProtobufPreferenceSettingsProvider()
             {
                 return new ProtobufUnitySettingsProvider("Preferences/Protobuf");
             }
         }
+        
 #else
         [PreferenceItem("Protobuf")]
 #endif
-        static void ProtobufPreference()
+        private static void ShowProtobufPreferencesWindow()
         {
             EditorGUI.BeginChangeCheck();
+            EditorGUIUtility.labelWidth = 200; 
+            isAutoCompilationEnabled = EditorGUILayout.Toggle(new GUIContent("Enable Protobuf Auto Compilation", ""), isAutoCompilationEnabled);
 
-            enabled = EditorGUILayout.Toggle(new GUIContent("Enable Protobuf Compilation", ""), enabled);
-
-            EditorGUI.BeginDisabledGroup(!enabled);
-
-            EditorGUILayout.HelpBox(@"On Windows put the path to protoc.exe (e.g. C:\My Dir\protoc.exe), on macOS and Linux you can use ""which protoc"" to find its location. (e.g. /usr/local/bin/protoc)", MessageType.Info);
-
+            EditorGUILayout.HelpBox(@"On Windows put the path to protoc.exe (e.g. C:\My Dir\protoc.exe), on macOS and Linux you can use ""which protoc"" to find its location. (e.g. /usr/local/bin/grpc_csharp_plugin)", MessageType.Info);
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Path to protoc", GUILayout.Width(100));
+            EditorGUILayout.LabelField("Path to protoc:");
             rawExcPath = EditorGUILayout.TextField(rawExcPath, GUILayout.ExpandWidth(true));
             EditorGUILayout.EndHorizontal();
+            
+            EditorGUILayout.Space();
+            
+            isGrpcCompilationEnabled = EditorGUILayout.Toggle(new GUIContent("Enable Grpc Services compilation", ""), isGrpcCompilationEnabled);
+            EditorGUI.BeginDisabledGroup(!isGrpcCompilationEnabled);
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("Path to Grpc plugin:");
+            rawExcGrpcPath = EditorGUILayout.TextField(rawExcGrpcPath, GUILayout.ExpandWidth(true));
+            EditorGUILayout.EndHorizontal();
+            EditorGUI.EndDisabledGroup();
 
             EditorGUILayout.Space();
 
-            logError = EditorGUILayout.Toggle(new GUIContent("Log Error Output", "Log compilation errors from protoc command."), logError);
-
-            logStandard = EditorGUILayout.Toggle(new GUIContent("Log Standard Output", "Log compilation completion messages."), logStandard);
+            isLoggingErrorEnabled = EditorGUILayout.Toggle(new GUIContent("Log Error Output", "Log compilation errors from protoc command."), isLoggingErrorEnabled);
+            isLoggingStandardEnabled = EditorGUILayout.Toggle(new GUIContent("Log Standard Output", "Log compilation completion messages."), isLoggingStandardEnabled);
 
             EditorGUILayout.Space();
 
-            if (GUILayout.Button(new GUIContent("Force Compilation")))
+            if (GUILayout.Button(new GUIContent("Compile .proto files")))
             {
                 ProtobufUnityCompiler.CompileAllInProject();
             }
-
-            EditorGUI.EndDisabledGroup();
 
             if (EditorGUI.EndChangeCheck())
             {

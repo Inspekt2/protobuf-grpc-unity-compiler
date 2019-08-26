@@ -1,6 +1,6 @@
-# protobuf-unity
+# protobuf-grpc-unity-compiler
 
-![settings](.Documentation/images/settings.png)
+![Protobuf_window](.Documentation/images/Protobuf_window.png)
 
 Do you want to integrate [protobuf](https://github.com/google/protobuf) as a data class, game saves, message to the server, etc. in your game? Now you can put those `.proto` files directly in the project, work on it, and have the editor script in here generate the classes for you.
 
@@ -10,7 +10,7 @@ Do you want to integrate [protobuf](https://github.com/google/protobuf) as a dat
 2. Put files in your Unity project. This is also Unity Package Manager compatible. You can pull from online to your project directly.
 3. You can access the settings in Preferences > Protobuf. Here you *need* to put a path to your `protoc` executable.
 
-![settings](.Documentation/images/settings.png)
+![Protobuf_window](.Documentation/images/Protobuf_window.png)
 
 As soon as you import/reimport/modify (but *not* moving) `.proto` file in your project, it will compile *only that file* to the same location as the file. If you want to temporary stop this there is a checkbox in the settings, then you can manually push the button in there if you like. Note that deleting `.proto` file will *not* remove its generated class.
 

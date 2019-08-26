@@ -14,6 +14,18 @@ Do you want to integrate [protobuf](https://github.com/google/protobuf) as a dat
 
 As soon as you import/reimport/modify (but *not* moving) `.proto` file in your project, it will compile *only that file* to the same location as the file. If you want to temporary stop this there is a checkbox in the settings, then you can manually push the button in there if you like. Note that deleting `.proto` file will *not* remove its generated class.
 
+# How can i use GRPC-services compilation
+1. Firstly you have to download grpc_csharp_plugin. You can find this plugin(and `protoc` executable too) in this NuGet Package https://www.nuget.org/packages/Grpc.Tools/. Unzip it and you will find all what you need in *tools* directory.
+![tools](.Documentation/images/tools.png)
+
+![tools_windows_64](.Documentation/images/tools_windows_64.png)
+
+2. You *need* to write a path to grpc_csharp_plugin in in Preferences > Protobuf->Path to Grpc plugin.
+
+3. If your .proto-file contains grpc-services there will be compile one more script which called *ProtoFileName*Grpc.cs. Example:
+
+![Compiled_proto](.Documentation/images/Compiled_proto.png)
+
 # Overview
 
 1. When you write a `.proto` file normally you need to use the `protoc` command line to generate C# classes. This plugin automatically find all your `.proto` files in your Unity project, generate them all, and output respective class file at the same place as the `.proto` file. It automatically regenerate when you change any `.proto` file. If there is an error the plugin will report via the Console. 
